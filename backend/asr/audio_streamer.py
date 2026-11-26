@@ -1,7 +1,7 @@
 import threading
 import numpy as np
 import os
-from transformers.pipelines.audio_utils import ffmpeg_microphone
+from .microphone_utils import ffmpeg_microphone
 from pathlib import Path
 
 # Add ffmpeg to environment (remove this part if it is already set in your environment)
@@ -43,7 +43,8 @@ class AudioStreamer:
         finally:
             with self._lock:
                 self._is_recording = False
-            microphone.close()
+                microphone.close()
+
 
     def get_audio(self, samples: int):
         with (self._lock):
@@ -57,7 +58,8 @@ class AudioStreamer:
 
     def stop(self, clear_samples: bool=True):
         with self._lock:
+            if not self._is_recording:
+                return
             self._is_recording = False
             if clear_samples:
                 self._audio = np.empty(0, dtype=np.float32)
-        self._thread.join()

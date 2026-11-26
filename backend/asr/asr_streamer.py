@@ -2,12 +2,11 @@ from typing import Callable
 
 import torch
 import time
-from threading import Thread
+from threading import RLock, Thread
 from transformers import AutoModelForRNNT, AutoProcessor, TextStreamer
 from transformers.models.nemotron3_5_asr.modeling_nemotron3_5_asr import Nemotron3_5AsrForRNNT
 from transformers.models.nemotron3_5_asr.processing_nemotron3_5_asr import Nemotron3_5AsrProcessor
 from .audio_streamer import AudioStreamer
-
 
 class AsrStreamer(TextStreamer):
     def __init__(self,
@@ -18,30 +17,57 @@ class AsrStreamer(TextStreamer):
         self._model: Nemotron3_5AsrForRNNT = AutoModelForRNNT.from_pretrained(model_id, local_files_only=local_files_only ).to(device)
         self._processor.set_num_lookahead_tokens(13)
         self._is_active = False
+        self._lock = RLock()
         super().__init__(self._processor.tokenizer, skip_special_tokens=True)
         self.callback: Callable[[str], None] | None = None
         self._asr_thread = None
         self._audio_streamer: AudioStreamer|None = None
+        self._is_sleep = False
+        self.device = device
+
+    def model_sleep(self):
+        with self._lock:
+            if self._is_active:
+                return
+        if self._is_sleep:
+            return
+        self._model.to("cpu")
+        torch.cuda.empty_cache()
+        self._is_sleep = True
+
+    def model_awake(self):
+        if not self._is_sleep:
+            return
+        self._model.to(self.device)
+        self._is_sleep = False
+
+
+    @property
+    def is_active(self) -> bool:
+        return self._is_active
 
     def on_finalized_text(self, text: str, stream_end: bool = False):
         if self.callback:
             self.callback(text)
 
     def stop(self):
-        if self._is_active:
+        with self._lock:
+            if not self._is_active:
+                return
             self._is_active = False
-            if self._audio_streamer:
-                self._audio_streamer.stop(True)
-                self._audio_streamer = None
-            if self._asr_thread:
-                self._asr_thread.join()
-                self._asr_thread = None
-
+        if self._audio_streamer:
+            self._audio_streamer.stop(True)
+            self._audio_streamer = None
+        if self._asr_thread:
+            self._asr_thread.join()
+            self._asr_thread = None
 
     def start(self, callback: Callable[[str], None], language: str | list[str] = "auto"):
-        if self._is_active:
-            return
-        self._is_active = True
+        with self._lock:
+            if self._is_active:
+                return
+            self.model_awake()
+            self._is_active = True
 
         processor = self._processor
         model = self._model
@@ -96,7 +122,10 @@ class AsrStreamer(TextStreamer):
                 }
                 model.generate(**generate_kwargs)
             finally:
-                self._is_active = False
+                with self._lock:
+                    if self._is_active:
+                        self._is_active = False
+
 
         self.callback = callback
         self._audio_streamer = audio_streamer

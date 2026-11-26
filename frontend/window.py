@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QIcon, QPainter, QPixmap
+from PyQt6.QtCore import QElapsedTimer, QEvent, QSize, Qt, QTimer
+from PyQt6.QtGui import QIcon, QPainter, QPixmap, QTextCursor
+from .recording import RecordingController
 from PyQt6.QtWidgets import (
     QApplication, QHBoxLayout, QLabel, QMenu, QPlainTextEdit,
     QPushButton, QStyle, QStyleOption, QSystemTrayIcon, QVBoxLayout, QWidget,
@@ -73,16 +74,15 @@ class VoiceInputWindow(QWidget):
 
         footer = QHBoxLayout()
         footer.setSpacing(6)
-        mic = button("mic", "录音（暂未启用）")
-        mic.setEnabled(False)
-        # Keep the reference color even in the disabled state.
-        mic_icon = mic.icon()
-        mic_icon.addPixmap(mic_icon.pixmap(24, 24), QIcon.Mode.Disabled)
-        mic.setIcon(mic_icon)
-        footer.addWidget(mic)
-        timer = QLabel("00:00")
-        timer.setObjectName("timer")
-        footer.addWidget(timer)
+        self.mic = button("mic", "开始识别")
+        self.mic.clicked.connect(self.toggle_recording)
+        footer.addWidget(self.mic)
+        self.timer_label = QLabel()
+        self.timer_label.setObjectName("timer")
+        self.loader = icon("loader").pixmap(18, 18)
+        self.loader_timer = QTimer(self)
+        self.loader_timer.timeout.connect(self.draw_loader)
+        footer.addWidget(self.timer_label)
         footer.addStretch()
         copy = button("copy", "复制全部文本")
         copy.setFlat(True)
@@ -94,6 +94,16 @@ class VoiceInputWindow(QWidget):
         footer.addWidget(clear)
         layout.addLayout(footer)
 
+        self.recording = RecordingController(self)
+        self.recording.text_received.connect(self.append_transcript)
+        self.recording.recording_started.connect(self.start_timer)
+        self.recording.finished.connect(self.recording_finished)
+        self.session_open = False
+        self.elapsed = QElapsedTimer()
+        self.clock = QTimer(self)
+        self.clock.timeout.connect(self.update_timer)
+        QApplication.instance().aboutToQuit.connect(self.shutdown_recording)
+
         self.tray = QSystemTrayIcon(icon("audio-lines", Qt.GlobalColor.black), self)
         self.tray_menu = QMenu()
         self.tray_menu.addAction("显示窗口", self.restore_window)
@@ -102,6 +112,80 @@ class VoiceInputWindow(QWidget):
         self.tray.activated.connect(self.tray_activated)
         if self.tray.isSystemTrayAvailable():
             self.tray.show()
+
+    def toggle_recording(self):
+        model = self.recording.model
+        if (model is not None and model.is_active) or self.loader_timer.isActive():
+            self.stop_recording()
+            return
+        if self.session_open:
+            return  # Previous session is still delivering its final UI events.
+        self.session_open = True
+        self.timer_label.clear()
+        self.loader_angle = 0
+        self.draw_loader()
+        self.loader_timer.start(80)
+        self.mic.setAccessibleName("取消加载")
+        self.recording.start()
+
+    def draw_loader(self):
+        frame = QPixmap(24, 24)
+        frame.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(frame)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        painter.translate(12, 12)
+        painter.rotate(self.loader_angle)
+        painter.drawPixmap(-9, -9, self.loader)
+        painter.end()
+        self.mic.setIcon(QIcon(frame))
+        self.loader_angle = (self.loader_angle + 30) % 360
+
+    def start_timer(self):
+        self.loader_timer.stop()
+        if self.recording.model.is_active and not self.recording.stop_requested.is_set():
+            self.mic.setIcon(icon("square"))
+            self.mic.setAccessibleName("停止识别")
+            self.elapsed.start()
+            self.update_timer()
+            self.clock.start(250)
+
+    def update_timer(self):
+        seconds = self.elapsed.elapsed() // 1000
+        self.timer_label.setText(f"{seconds // 60:02}:{seconds % 60:02}")
+
+    def append_transcript(self, text):
+        if text and not self.recording.stop_requested.is_set():
+            if self.editor.hasFocus():
+                self.editor.insertPlainText(text)
+                self.editor.ensureCursorVisible()
+                return
+            cursor = QTextCursor(self.editor.document())
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            cursor.insertText(text)
+            self.editor.verticalScrollBar().setValue(self.editor.verticalScrollBar().maximum())
+
+    def stop_recording(self):
+        if self.session_open:
+            self.recording.stop_requested.set()
+            self.clock.stop()
+            self.mic.setEnabled(False)
+
+    def recording_finished(self):
+        self.loader_timer.stop()
+        self.clock.stop()
+        self.session_open = False
+        self.mic.setEnabled(True)
+        self.mic.setAccessibleName("开始识别")
+        self.mic.setIcon(icon("mic"))
+
+    def shutdown_recording(self):
+        self.stop_recording()
+        self.recording.shutdown()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.WindowStateChange and self.isMinimized():
+            self.stop_recording()
 
     def copy_text(self):
         QApplication.clipboard().setText(self.editor.toPlainText())
@@ -121,9 +205,11 @@ class VoiceInputWindow(QWidget):
             self.restore_window()
 
     def hide_to_tray(self):
+        self.stop_recording()
         if self.tray.isSystemTrayAvailable():
             self.tray.show()
             self.hide()
+            self.recording.request_sleep()
         else:
             self.showMinimized()
 
