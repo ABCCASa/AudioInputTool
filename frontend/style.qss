@@ -1,0 +1,43 @@
+QWidget {
+    font-family: "Microsoft YaHei UI", sans-serif;
+    color: #ffffff;
+}
+
+QWidget#voiceInputWindow {
+    background: #202123;
+    border-radius: 12px;
+}
+
+QLabel#timer {
+    color: #b2b2b2;
+    font-size: 15px;
+}
+
+QPlainTextEdit {
+    background: #2c2d30;
+    border: 1px solid #454649;
+    border-radius: 8px;
+    padding: 5px;
+    font-size: 14px;
+    placeholder-text-color: #808994;
+}
+
+QPushButton {
+    background: #343537;
+    border: none;
+    border-radius: 7px;
+}
+
+QPushButton#caption,
+QPushButton:flat {
+    background: transparent;
+}
+
+QPushButton:hover,
+QPushButton#caption:hover {
+    background: #434447;
+}
+
+QPushButton:pressed {
+    background: #505155;
+}
