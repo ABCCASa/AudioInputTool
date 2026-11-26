@@ -19,7 +19,6 @@ class RecordingButton(QPushButton):
 
     def show_processing(self):
         self.setEnabled(False)
-        self.setAccessibleName("处理中")
         if self._animation.isActive():
             return
         self._draw_loader()
@@ -29,13 +28,11 @@ class RecordingButton(QPushButton):
         self._animation.stop()
         self.setEnabled(True)
         self.setIcon(icon("square"))
-        self.setAccessibleName("停止识别")
 
     def show_idle(self):
         self._animation.stop()
         self.setEnabled(True)
         self.setIcon(icon("mic"))
-        self.setAccessibleName("开始识别")
 
     def _draw_loader(self):
         frame = QPixmap(24, 24)

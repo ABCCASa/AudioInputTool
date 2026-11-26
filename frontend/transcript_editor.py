@@ -5,8 +5,7 @@ from PyQt6.QtWidgets import QApplication, QPlainTextEdit
 class TranscriptEditor(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAccessibleName("输入文本")
-        self.setPlaceholderText("输入文本...")
+        #self.setPlaceholderText("输入文本...")
 
     def insert_transcript(self, text: str):
         if not text:

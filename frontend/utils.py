@@ -17,12 +17,11 @@ def icon(name, color=Qt.GlobalColor.white):
     return QIcon(pixmap)
 
 
-def button(name, label, size=34, glyph=18, *, flat=False):
+def button(name, size=34, glyph=18, *, flat=False):
     control = QPushButton()
     control.setFlat(flat)
     control.setIcon(icon(name))
     control.setIconSize(QSize(glyph, glyph))
     control.setFixedSize(size, size)
-    control.setAccessibleName(label)
     control.setCursor(Qt.CursorShape.PointingHandCursor)
     return control

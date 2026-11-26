@@ -24,10 +24,10 @@ class CaptionedWindow(FramelessWindow):
         header.addStretch()
         actions = []
         if QSystemTrayIcon.isSystemTrayAvailable():
-            actions.append(("panel-bottom-close", "隐藏到系统托盘", self.tray_requested.emit))
-        actions.extend((("minus", "最小化", self.showMinimized), ("x", "关闭", self.close_requested.emit)))
-        for name, label, action in actions:
-            control = button(name, label, 28, 16)
+            actions.append(("panel-bottom-close", self.tray_requested.emit))
+        actions.extend((("minus", self.showMinimized), ("x", self.close_requested.emit)))
+        for name, action in actions:
+            control = button(name, size=28, glyph=16)
             control.setObjectName("caption")
             control.clicked.connect(action)
             header.addWidget(control)
