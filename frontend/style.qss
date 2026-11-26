@@ -22,6 +22,10 @@ QPlainTextEdit {
     placeholder-text-color: #808994;
 }
 
+QPlainTextEdit QMenu {
+    color: #000000;
+}
+
 QPushButton {
     background: #343537;
     border: none;
