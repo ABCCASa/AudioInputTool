@@ -1,9 +1,10 @@
 import datetime
-import platform
+import sys
 import subprocess
 
 import numpy as np
 
+FFMPEG_CREATION_FLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 def ffmpeg_microphone(
     sampling_rate: int,
@@ -48,15 +49,13 @@ def ffmpeg_microphone(
     else:
         raise ValueError(f"Unhandled format `{format_for_conversion}`. Please use `s16le` or `f32le`")
 
-    system = platform.system()
-
-    if system == "Linux":
+    if sys.platform.startswith("linux"):
         format_ = "alsa"
         input_ = ffmpeg_input_device or "default"
-    elif system == "Darwin":
+    elif sys.platform == "darwin":
         format_ = "avfoundation"
         input_ = ffmpeg_input_device or ":default"
-    elif system == "Windows":
+    elif sys.platform == "win32":
         format_ = "dshow"
         input_ = ffmpeg_input_device or _get_microphone_name()
 
@@ -95,7 +94,8 @@ def _ffmpeg_stream(ffmpeg_command, buflen: int):
     """
     bufsize = 2**24  # 16Mo
     try:
-        with subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, bufsize=bufsize) as ffmpeg_process:
+        with subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, bufsize=bufsize,
+                              creationflags=FFMPEG_CREATION_FLAGS) as ffmpeg_process:
             while True:
                 raw = ffmpeg_process.stdout.read(buflen)
                 if raw == b"":
@@ -112,7 +112,8 @@ def _get_microphone_name():
     command = ["ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", ""]
 
     try:
-        ffmpeg_devices = subprocess.run(command, text=True, stderr=subprocess.PIPE, encoding="utf-8")
+        ffmpeg_devices = subprocess.run(command, text=True, stderr=subprocess.PIPE, encoding="utf-8",
+                                        creationflags=FFMPEG_CREATION_FLAGS)
         microphone_lines = [line for line in ffmpeg_devices.stderr.splitlines() if "(audio)" in line]
 
         if microphone_lines:

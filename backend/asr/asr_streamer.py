@@ -10,12 +10,12 @@ from .audio_streamer import AudioStreamer
 
 class AsrStreamer(TextStreamer):
     def __init__(self,
-                 model_id:str = "nvidia/nemotron-3.5-asr-streaming-0.6b",
+                 model_id:str = "nvidia/nemotron-speech-streaming-en-0.6b",
                  device: str|torch.device|None = None,
                  local_files_only=False):
-        self._processor: Nemotron3_5AsrProcessor = AutoProcessor.from_pretrained(model_id,local_files_only=local_files_only)
-        self._model: Nemotron3_5AsrForRNNT = AutoModelForRNNT.from_pretrained(model_id, local_files_only=local_files_only ).to(device)
-        self._processor.set_num_lookahead_tokens(13)
+        self._processor = AutoProcessor.from_pretrained(model_id,local_files_only=local_files_only)
+        self._model = AutoModelForRNNT.from_pretrained(model_id, local_files_only=local_files_only ).to(device)
+        self._processor.set_num_lookahead_tokens(6)
         self._is_active = False
         self._lock = RLock()
         super().__init__(self._processor.tokenizer, skip_special_tokens=True)
@@ -62,7 +62,7 @@ class AsrStreamer(TextStreamer):
             self._asr_thread.join()
             self._asr_thread = None
 
-    def start(self, callback: Callable[[str], None], language: str | list[str] = "auto"):
+    def start(self, callback: Callable[[str], None]):
         with self._lock:
             if self._is_active:
                 return
@@ -72,7 +72,7 @@ class AsrStreamer(TextStreamer):
         processor = self._processor
         model = self._model
         sampling_rate = processor.feature_extractor.sampling_rate
-        audio_streamer = AudioStreamer(sampling_rate)
+        audio_streamer = AudioStreamer(sampling_rate, 0.2)
 
         def asr_loop():
             try:
@@ -85,9 +85,7 @@ class AsrStreamer(TextStreamer):
                     audio_streamer.get_audio(processor.num_samples_first_audio_chunk),
                     sampling_rate=sampling_rate,
                     is_streaming=True,
-                    is_first_audio_chunk=True,
-                    language=language,
-                ).to(model.device, dtype=model.dtype)
+                    is_first_audio_chunk=True, ).to(model.device, dtype=model.dtype)
 
                 def input_features_generator():
                     first_frame = processor.num_mel_frames_first_audio_chunk
@@ -109,9 +107,7 @@ class AsrStreamer(TextStreamer):
                             audio_streamer.get_audio(processor.num_samples_per_audio_chunk),
                             sampling_rate=sampling_rate,
                             is_streaming=True,
-                            is_first_audio_chunk=False,
-                            language=language
-                        ).to(model.device, dtype=model.dtype)
+                            is_first_audio_chunk=False, ).to(model.device, dtype=model.dtype)
                         yield inputs.input_features
                         audio_streamer.trim(chunk_frames * hop_length)
                 generate_kwargs = {

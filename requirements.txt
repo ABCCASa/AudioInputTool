@@ -1,0 +1,5 @@
+PyQt6~=6.12.1
+PyQt6_sip~=13.13.1
+torch~=2.13.0+cu130
+transformers~=5.24.1
+numpy~=2.4.4
