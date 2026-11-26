@@ -1,0 +1,6 @@
+.gitignore
+.idea
+.git
+*.dll
+*.mp3
+*.exe
