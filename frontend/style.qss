@@ -18,7 +18,7 @@ QPlainTextEdit {
     border: 1px solid #454649;
     border-radius: 8px;
     padding: 5px;
-    font-size: 14px;
+    font-size: 12px;
     placeholder-text-color: #808994;
 }
 

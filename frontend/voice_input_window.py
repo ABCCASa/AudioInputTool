@@ -32,6 +32,7 @@ class VoiceInputWindow(CaptionedWindow):
         footer = QHBoxLayout()
         footer.setSpacing(6)
         self.mic = RecordingButton()
+        self.mic.show_processing()
         self.mic.clicked.connect(self.toggle_recording)
         footer.addWidget(self.mic)
         self.timer_label = QLabel()
@@ -47,9 +48,10 @@ class VoiceInputWindow(CaptionedWindow):
         self.window_layout.addLayout(footer)
 
         self.recording = RecordingController(self)
+        self.recording.model_initialized.connect(self.on_model_initialized)
         self.recording.text_received.connect(self.append_transcript)
         self.recording.recording_started.connect(self.start_timer)
-        self.recording.finished.connect(self.recording_finished)
+        self.recording.recording_finished.connect(self.recording_finished)
         self.session_open = False
         self.elapsed = QElapsedTimer()
         self.clock = QTimer(self)
@@ -64,6 +66,13 @@ class VoiceInputWindow(CaptionedWindow):
         self.tray.activated.connect(self.tray_activated)
         if self.tray.isSystemTrayAvailable():
             self.tray.show()
+        self.recording.initialize_model()
+
+    def on_model_initialized(self, ready):
+        self.mic.show_idle()
+        if not ready:
+            self.mic.setEnabled(False)
+            self.mic.setToolTip("语音识别模型加载失败")
 
     def toggle_recording(self):
         model = self.recording.model

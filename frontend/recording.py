@@ -5,15 +5,25 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from backend.model_loader import load_model
 
 class RecordingController(QObject):
+    model_initialized = pyqtSignal(bool)
     text_received = pyqtSignal(str)
     recording_started = pyqtSignal()
-    finished = pyqtSignal()
+    recording_finished = pyqtSignal()
 
     def __init__(self, parent):
         super().__init__(parent)
         self.model = None
         self._executor = ThreadPoolExecutor(max_workers=1)
         self.stop_requested = Event()
+
+    def initialize_model(self):
+        self._executor.submit(self._load_model)
+
+    def _load_model(self):
+        try:
+            self.model = load_model()
+        finally:
+            self.model_initialized.emit(self.model is not None)
 
     def start(self):
         self.stop_requested.clear()
@@ -33,10 +43,6 @@ class RecordingController(QObject):
 
     def _record(self):
         try:
-            if self.stop_requested.is_set():
-                return
-            if self.model is None:
-                self.model = load_model()
             if self.model is None or self.stop_requested.is_set():
                 return
             self.model.start(self.text_received.emit)
@@ -50,5 +56,5 @@ class RecordingController(QObject):
         except Exception as exc:
             print(exc)
         finally:
-            self.finished.emit()
+            self.recording_finished.emit()
 
