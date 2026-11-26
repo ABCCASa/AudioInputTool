@@ -1,4 +1,4 @@
-def load_local_model():
+def load_model( local_files_only=False):
     try:
         import torch
         from .asr import AsrStreamer

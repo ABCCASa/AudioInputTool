@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtWidgets import QApplication
-from frontend.window import VoiceInputWindow
+from frontend.voice_input_window import VoiceInputWindow
 
 def main():
     app = QApplication(sys.argv)

@@ -1,5 +1,4 @@
 from typing import Callable
-
 import torch
 import time
 from threading import RLock, Thread
@@ -41,10 +40,10 @@ class AsrStreamer(TextStreamer):
         self._model.to(self.device)
         self._is_sleep = False
 
-
     @property
     def is_active(self) -> bool:
-        return self._is_active
+        with self._lock:
+            return self._is_active
 
     def on_finalized_text(self, text: str, stream_end: bool = False):
         if self.callback:
@@ -66,20 +65,22 @@ class AsrStreamer(TextStreamer):
         with self._lock:
             if self._is_active:
                 return
-            self.model_awake()
             self._is_active = True
 
+        self.model_awake()
         processor = self._processor
         model = self._model
         sampling_rate = processor.feature_extractor.sampling_rate
         audio_streamer = AudioStreamer(sampling_rate, 0.2)
+        self.callback = callback
+        self._audio_streamer = audio_streamer
 
         def asr_loop():
             try:
                 while audio_streamer.samples < processor.num_samples_first_audio_chunk:
                     if not audio_streamer.is_recording:
                         return
-                    time.sleep(0.01)
+                    time.sleep(0.1)
 
                 first_chunk_inputs = processor(
                     audio_streamer.get_audio(processor.num_samples_first_audio_chunk),
@@ -99,7 +100,7 @@ class AsrStreamer(TextStreamer):
                     while True:
                         if audio_streamer.samples < processor.num_samples_per_audio_chunk:
                             if audio_streamer.is_recording:
-                                time.sleep(0.01)
+                                time.sleep(0.1)
                                 continue
                             else:
                                 return
@@ -114,7 +115,7 @@ class AsrStreamer(TextStreamer):
                     **first_chunk_inputs,
                     "input_features": input_features_generator(),
                     "streamer": self,
-                    "max_length": int(1e9),
+                    "max_new_tokens": int(1e9),
                 }
                 model.generate(**generate_kwargs)
             finally:
@@ -122,9 +123,11 @@ class AsrStreamer(TextStreamer):
                     if self._is_active:
                         self._is_active = False
 
+                if self._audio_streamer:
+                    self._audio_streamer.stop(True)
+                    self._audio_streamer = None
 
-        self.callback = callback
-        self._audio_streamer = audio_streamer
+
         thread = Thread(target=asr_loop, daemon=True)
         self._asr_thread = thread
         thread.start()

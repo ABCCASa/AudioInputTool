@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 
 from PyQt6.QtCore import QObject, pyqtSignal
-from backend.model_loader import load_local_model
+from backend.model_loader import load_model
 
 class RecordingController(QObject):
     text_received = pyqtSignal(str)
@@ -36,15 +36,15 @@ class RecordingController(QObject):
             if self.stop_requested.is_set():
                 return
             if self.model is None:
-                self.model = load_local_model()
+                self.model = load_model()
             if self.model is None or self.stop_requested.is_set():
                 return
-            self.model.start(self.deliver_text)
+            self.model.start(self.text_received.emit)
             if not self.model.is_active:
                 return
             self.recording_started.emit()
             while self.model.is_active:
-                if self.stop_requested.wait(0.05):
+                if self.stop_requested.wait(0.02):
                     self.model.stop()
                     break
         except Exception as exc:
@@ -52,9 +52,3 @@ class RecordingController(QObject):
         finally:
             self.finished.emit()
 
-
-    def deliver_text(self, text):
-        try:
-            self.text_received.emit(text)
-        except RuntimeError as exc:
-            print(f"发送界面文字更新失败：{exc}")
