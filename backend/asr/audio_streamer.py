@@ -16,8 +16,8 @@ class AudioStreamer:
         self._chunk_length_s = chunk_length_s
         self._audio = np.empty(0, dtype=np.float32)
         self._lock = threading.RLock()
-        threading.Thread(target=self._record_loop, daemon=True).start()
-
+        self._thread = threading.Thread(target=self._record_loop, daemon=True)
+        self._thread.start()
 
     @property
     def is_recording(self):
@@ -32,21 +32,18 @@ class AudioStreamer:
         microphone = ffmpeg_microphone(self._sampling_rate, self._chunk_length_s, ffmpeg_input_device=self._ffmpeg_input_device)
         try:
             for chunk in microphone:
-                if not self._is_recording:
-                    break
-                chunk = np.frombuffer(chunk, dtype=np.float32)
                 with self._lock:
+                    if not self._is_recording:
+                        break
+                    chunk = np.frombuffer(chunk, dtype=np.float32)
                     if self._audio.size == 0:
                         self._audio = chunk
                     else:
                         self._audio = np.concatenate((self._audio, chunk))
-        except Exception as e:
-            self._is_recording = False
-            print(f"Audio recorder error: {e}")
         finally:
+            with self._lock:
+                self._is_recording = False
             microphone.close()
-
-
 
     def get_audio(self, samples: int):
         with (self._lock):
@@ -58,5 +55,9 @@ class AudioStreamer:
                 return
             self._audio = self._audio[samples:]
 
-    def stop(self):
-        self._is_recording = False
+    def stop(self, clear_samples: bool=True):
+        with self._lock:
+            self._is_recording = False
+            if clear_samples:
+                self._audio = np.empty(0, dtype=np.float32)
+        self._thread.join()
