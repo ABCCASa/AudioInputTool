@@ -16,7 +16,8 @@ from PyQt6.QtWidgets import (
 class VoiceInputWindow(CaptionedWindow):
     def __init__(self):
         super().__init__(
-            flags=Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint,
+            flags=(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint
+                   | Qt.WindowType.WindowMinimizeButtonHint),
             logo_icon=icon("audio-lines"),
         )
         self.setWindowTitle("语音输入")
