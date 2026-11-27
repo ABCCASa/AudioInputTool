@@ -1,5 +1,5 @@
 from PyQt6.QtGui import QTextCursor
-from PyQt6.QtWidgets import QApplication, QPlainTextEdit
+from PyQt6.QtWidgets import QPlainTextEdit
 
 
 class TranscriptEditor(QPlainTextEdit):
@@ -20,6 +20,3 @@ class TranscriptEditor(QPlainTextEdit):
         cursor.insertText(text)
         scrollbar = self.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
-
-    def copy_all(self):
-        QApplication.clipboard().setText(self.toPlainText())

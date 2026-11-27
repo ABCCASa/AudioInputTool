@@ -3,12 +3,70 @@ QWidget {
     color: #ffffff;
 }
 
-QWidget#voiceInputWindow {
+QWidget#voiceInputWindow, QFrame#fileDialogPanel {
     background: #202123;
     border-radius: 12px;
 }
 
-QLabel#timer {
+QFrame#fileDialogPanel {
+    border: 1px solid #454649;
+}
+
+QLabel#fileDialogTitle {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+QFrame#fileDialogPanel QLineEdit {
+    background: #2c2d30;
+    border: 1px solid #454649;
+    border-radius: 8px;
+    padding: 6px 8px;
+    selection-background-color: #505155;
+}
+
+QFrame#fileDialogPanel QLineEdit:focus {
+    border-color: #777980;
+}
+
+QFrame#fileDialogPanel QLineEdit[invalid="true"] {
+    border-color: #e46770;
+}
+
+QFrame#fileDialogPanel QPushButton {
+    min-width: 64px;
+    padding: 5px 10px;
+    border: 1px solid transparent;
+}
+
+QFrame#fileDialogPanel QPushButton:focus,
+QFrame#fileDialogPanel QPushButton:default {
+    border-color: #777980;
+}
+
+QPushButton#confirmFileButton {
+    background: #434447;
+}
+
+QPushButton#confirmFileButton:hover {
+    background: #505155;
+}
+
+QPushButton#confirmFileButton:disabled {
+    background: #2c2d30;
+    color: #97999d;
+    border-color: transparent;
+}
+
+QPushButton#deleteFileButton {
+    background: #733b41;
+}
+
+QPushButton#deleteFileButton:hover {
+    background: #894950;
+}
+
+QLabel#modelLoadError {
     color: #b2b2b2;
     font-size: 15px;
 }
@@ -24,6 +82,12 @@ QComboBox:disabled {
     color: #97999d;
 }
 
+QComboBox::drop-down {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 34px;
+}
+
 QPlainTextEdit {
     background: #2c2d30;
     border: 1px solid #454649;
@@ -34,6 +98,26 @@ QPlainTextEdit {
 }
 
 QPlainTextEdit QMenu {
+    color: #000000;
+}
+
+QWidget#transcriptSidebar {
+    background: #2c2d30;
+    border: 1px solid #454649;
+    border-radius: 8px;
+}
+
+QListWidget#transcriptFiles {
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
+QListWidget#transcriptFiles::item:selected {
+    background: #434447;
+}
+
+QMenu#transcriptFileMenu {
     color: #000000;
 }
 
