@@ -1,6 +1,7 @@
 .gitignore
 .idea
 .git
+.venv
 *.dll
 *.mp3
 *.exe

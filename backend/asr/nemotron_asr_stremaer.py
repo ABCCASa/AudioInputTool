@@ -15,7 +15,7 @@ class NemotronAsrStreamer(AsrStreamer):
         self._processor:Nemotron3_5AsrProcessor = AutoProcessor.from_pretrained(model_id,local_files_only=local_files_only)
         self._model:Nemotron3_5AsrForRNNT = AutoModelForRNNT.from_pretrained(model_id, local_files_only=local_files_only)
         self._processor.set_num_lookahead_tokens(13)
-        super().__init__(self._processor.tokenizer, skip_special_tokens=True)
+        super().__init__(self._processor.tokenizer, skip_special_tokens=True, clean_up_tokenization_spaces=True)
 
         self._is_sleep = True
         self._is_active = False
@@ -87,7 +87,7 @@ class NemotronAsrStreamer(AsrStreamer):
                     audio_streamer.get_audio(processor.num_samples_first_audio_chunk),
                     sampling_rate=sampling_rate,
                     is_streaming=True,
-                    is_first_audio_chunk=True, ).to(model.device, dtype=model.dtype)
+                    is_first_audio_chunk=True,).to(model.device, dtype=model.dtype)
 
                 def input_features_generator():
                     first_frame = processor.num_mel_frames_first_audio_chunk
