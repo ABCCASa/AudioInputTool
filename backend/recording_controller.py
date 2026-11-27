@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 
 from PyQt6.QtCore import QObject, pyqtSignal
-from backend.model_loader import DEFAULT_MODEL, load_model
+from asr import DEFAULT_MODEL, load_model
 
 class RecordingController(QObject):
     model_load_failed = pyqtSignal()

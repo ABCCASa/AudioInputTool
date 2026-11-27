@@ -1,11 +1,11 @@
 from pathlib import Path
-from backend.model_loader import DEFAULT_MODEL, supported_models
+from asr import DEFAULT_MODEL, supported_models
 
 from PyQt6.QtCore import QElapsedTimer, QEvent, Qt, QTimer
 from .recording_button import RecordingButton
 from .captioned_window import CaptionedWindow
 from .utils import button, icon
-from .recording_controller import RecordingController
+from backend.recording_controller import RecordingController
 from .transcript_editor import TranscriptEditor
 from PyQt6.QtWidgets import (
     QApplication, QComboBox, QHBoxLayout, QLabel, QMenu,

@@ -2,17 +2,20 @@ from typing import Callable
 import torch
 import time
 from threading import RLock, Thread
+from transformers import AutoModelForRNNT, AutoProcessor, TextStreamer, AutoConfig
+from transformers.models.nemotron3_5_asr.modeling_nemotron3_5_asr import Nemotron3_5AsrForRNNT
+from transformers.models.nemotron3_5_asr.processing_nemotron3_5_asr import Nemotron3_5AsrProcessor
 from .audio_streamer import AudioStreamer
 from .asr_streamer import AsrStreamer
-from transformers import VoxtralRealtimeForConditionalGeneration, VoxtralRealtimeProcessor
 import gc
 
-class VoxtralAsrStreamer(AsrStreamer):
-    def __init__(self,model_id: str = "mistralai/Voxtral-Mini-4B-Realtime-2602", device: str|torch.device|None = None, local_files_only=False):
+class NemotronAsrStreamer(AsrStreamer):
+    def __init__(self, model_id: str = "nvidia/nemotron-speech-streaming-en-0.6b", device: str|torch.device|None = None, local_files_only=False):
         self.device = device
-        self._processor = VoxtralRealtimeProcessor.from_pretrained(model_id,local_files_only=local_files_only)
-        self._model = VoxtralRealtimeForConditionalGeneration.from_pretrained(model_id, local_files_only=local_files_only, dtype=torch.bfloat16).to(self.device)
-        super().__init__(self._processor.tokenizer, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+        self._processor:Nemotron3_5AsrProcessor = AutoProcessor.from_pretrained(model_id, local_files_only=local_files_only)
+        self._model:Nemotron3_5AsrForRNNT = AutoModelForRNNT.from_pretrained(model_id, local_files_only=local_files_only).to(self.device)
+        self._processor.set_num_lookahead_tokens(13)
+        super().__init__(self._processor.tokenizer, skip_special_tokens=True)
 
         self._is_sleep = False
         self._is_active = False
@@ -39,6 +42,7 @@ class VoxtralAsrStreamer(AsrStreamer):
             return
         self._model.to(self.device)
         self._is_sleep = False
+
 
     def release(self):
         if self._asr_thread is not None:
@@ -91,19 +95,20 @@ class VoxtralAsrStreamer(AsrStreamer):
                         return
                     time.sleep(0.1)
 
-                first_chunk_inputs = processor(audio_streamer.get_audio(processor.num_samples_first_audio_chunk),
-                          is_streaming=True, is_first_audio_chunk=True,
-                          return_tensors="pt").to(model.device, dtype=model.dtype)
+                first_chunk_inputs = processor(
+                    audio_streamer.get_audio(processor.num_samples_first_audio_chunk),
+                    sampling_rate=sampling_rate,
+                    is_streaming=True,
+                    is_first_audio_chunk=True,).to(model.device, dtype=model.dtype)
 
                 def input_features_generator():
-
-
-                    mel_frame_idx = processor.num_mel_frames_first_audio_chunk
+                    first_frame = processor.num_mel_frames_first_audio_chunk
+                    chunk_frames = processor.num_mel_frames_per_audio_chunk
                     hop_length = processor.feature_extractor.hop_length
-                    win_length = processor.feature_extractor.win_length
+                    n_fft = processor.feature_extractor.n_fft
 
-                    yield first_chunk_inputs.input_features
-                    audio_streamer.trim(mel_frame_idx * hop_length - win_length // 2)
+                    yield first_chunk_inputs.input_features[:, : first_frame, :]
+                    audio_streamer.trim(first_frame * hop_length - n_fft // 2)
 
                     while True:
                         if audio_streamer.samples < processor.num_samples_per_audio_chunk:
@@ -114,25 +119,25 @@ class VoxtralAsrStreamer(AsrStreamer):
                                 return
                         inputs = processor(
                             audio_streamer.get_audio(processor.num_samples_per_audio_chunk),
+                            sampling_rate=sampling_rate,
                             is_streaming=True,
-                            is_first_audio_chunk=False, return_tensors="pt").to(model.device, dtype=model.dtype)
+                            is_first_audio_chunk=False, ).to(model.device, dtype=model.dtype)
                         yield inputs.input_features
-                        audio_streamer.trim(processor.audio_length_per_tok * hop_length)
+                        audio_streamer.trim(chunk_frames * hop_length)
                 generate_kwargs = {
-                    "input_ids": first_chunk_inputs.input_ids,
+                    **first_chunk_inputs,
                     "input_features": input_features_generator(),
-                    "num_delay_tokens": first_chunk_inputs.num_delay_tokens,
                     "streamer": self,
+                    "max_length": int(1e9),
                 }
                 model.generate(**generate_kwargs)
             finally:
                 with self._lock:
                     if self._is_active:
                         self._is_active = False
-
-                if self._audio_streamer:
-                    self._audio_streamer.stop(True)
-                    self._audio_streamer = None
+                    if self._audio_streamer:
+                        self._audio_streamer.stop(True)
+                        self._audio_streamer = None
 
 
         thread = Thread(target=asr_loop, daemon=True)
