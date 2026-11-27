@@ -1,3 +1,4 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 
@@ -22,6 +23,8 @@ class RecordingController(QObject):
     def _load_model(self):
         try:
             self.model = load_model()
+        except Exception:
+            logging.exception("语音识别模型加载失败")
         finally:
             self.model_initialized.emit(self.model is not None)
 

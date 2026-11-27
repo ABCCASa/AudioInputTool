@@ -1,11 +1,25 @@
 import torch
 from .asr import NemotronAsrStreamer
+from .asr import VoxtralAsrStreamer
 
-def load_model(local_files_only=False):
-    try:
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        #return NemotronAsrStreamer(device=device, local_files_only=local_files_only)
-        return NemotronAsrStreamer(device=device, local_files_only=local_files_only)
-    except Exception as exc:
-        print(f"加载语音识别模型失败：{exc}")
-        return None
+
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+def supported_models():
+    return {
+        "nvidia/nemotron-speech-streaming-en-0.6b",
+        "nvidia/nemotron-3.5-asr-streaming-0.6b",
+        "mistralai/Voxtral-Mini-4B-Realtime-2602",
+       }
+
+def _load_voxtral(model_id: str, local_files_only=False):
+    return VoxtralAsrStreamer(model_id, device=device, local_files_only=local_files_only)
+
+def _load_nemotron(model_id: str, local_files_only=False):
+    return NemotronAsrStreamer(model_id, local_files_only=local_files_only)
+
+def load_model(model_id: str = "mistralai/Voxtral-Mini-4B-Realtime-2602", local_files_only=False):
+    if model_id in ["nvidia/nemotron-speech-streaming-en-0.6b", "nvidia/nemotron-3.5-asr-streaming-0.6b", ]:
+        return _load_nemotron(model_id, local_files_only=local_files_only)
+    elif model_id in ["mistralai/Voxtral-Mini-4B-Realtime-2602"]:
+        return _load_voxtral(model_id, local_files_only=local_files_only)
+    return None

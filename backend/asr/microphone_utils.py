@@ -1,8 +1,5 @@
-import datetime
 import sys
 import subprocess
-
-import numpy as np
 
 FFMPEG_CREATION_FLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
