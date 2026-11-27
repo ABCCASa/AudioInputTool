@@ -42,7 +42,6 @@ class RecordingController(QObject):
 
     def shutdown(self):
         self.stop_requested.set()
-        self._executor.submit(self._release_model)
         self._executor.shutdown(wait=True)
 
     def _record(self, model_id):
