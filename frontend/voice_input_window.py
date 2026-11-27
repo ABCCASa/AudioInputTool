@@ -1,5 +1,5 @@
 from pathlib import Path
-from backend.model_loader import supported_models
+from backend.model_loader import DEFAULT_MODEL, supported_models
 
 from PyQt6.QtCore import QElapsedTimer, QEvent, Qt, QTimer
 from .recording_button import RecordingButton
@@ -46,6 +46,9 @@ class VoiceInputWindow(CaptionedWindow):
         self.model_selector.setAccessibleName("识别模型")
         self.model_selector.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.model_selector.addItems(supported_models())
+        default_index = self.model_selector.findText(DEFAULT_MODEL)
+        if default_index >= 0:
+            self.model_selector.setCurrentIndex(default_index)
         self.model_selector.setToolTip(self.model_selector.currentText())
         self.model_selector.currentTextChanged.connect(self.model_selector.setToolTip)
         footer.addWidget(self.model_selector, 1)
@@ -57,7 +60,7 @@ class VoiceInputWindow(CaptionedWindow):
         footer.addWidget(clear)
         self.window_layout.addLayout(footer)
 
-        self.recording = RecordingController(self)
+        self.recording = RecordingController(self, model_id=self.model_selector.currentText())
         self.model_selector.currentTextChanged.connect(self.select_model)
         self.recording.model_load_failed.connect(self.on_model_load_failed)
         self.recording.text_received.connect(self.append_transcript)

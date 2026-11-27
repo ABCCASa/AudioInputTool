@@ -11,10 +11,10 @@ class RecordingController(QObject):
     recording_started = pyqtSignal()
     recording_finished = pyqtSignal()
 
-    def __init__(self, parent):
+    def __init__(self, parent, model_id=DEFAULT_MODEL):
         super().__init__(parent)
         self._model = None
-        self._model_id = DEFAULT_MODEL
+        self._model_id = model_id
         self._executor = ThreadPoolExecutor(max_workers=1)
         self.stop_requested = Event()
 

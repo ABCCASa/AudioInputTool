@@ -7,9 +7,9 @@ DEFAULT_MODEL = "nvidia/nemotron-speech-streaming-en-0.6b"
 
 def supported_models():
     return (
-        "mistralai/Voxtral-Mini-4B-Realtime-2602",
         "nvidia/nemotron-speech-streaming-en-0.6b",
         "nvidia/nemotron-3.5-asr-streaming-0.6b",
+        "mistralai/Voxtral-Mini-4B-Realtime-2602",
     )
 
 def _load_voxtral(model_id: str, local_files_only=False):
