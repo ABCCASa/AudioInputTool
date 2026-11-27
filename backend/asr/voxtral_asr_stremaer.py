@@ -11,10 +11,10 @@ class VoxtralAsrStreamer(AsrStreamer):
     def __init__(self,model_id: str = "mistralai/Voxtral-Mini-4B-Realtime-2602", device: str|torch.device|None = None, local_files_only=False):
         self.device = device
         self._processor = VoxtralRealtimeProcessor.from_pretrained(model_id,local_files_only=local_files_only)
-        self._model = VoxtralRealtimeForConditionalGeneration.from_pretrained(model_id, local_files_only=local_files_only, dtype=torch.bfloat16)
+        self._model = VoxtralRealtimeForConditionalGeneration.from_pretrained(model_id, local_files_only=local_files_only, dtype=torch.bfloat16).to(self.device)
         super().__init__(self._processor.tokenizer, skip_special_tokens=True, clean_up_tokenization_spaces=True)
 
-        self._is_sleep = True
+        self._is_sleep = False
         self._is_active = False
         self._lock = RLock()
 

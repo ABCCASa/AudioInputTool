@@ -3,7 +3,7 @@ from .asr import NemotronAsrStreamer
 from .asr import VoxtralAsrStreamer
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
-DEFAULT_MODEL = "mistralai/Voxtral-Mini-4B-Realtime-2602"
+DEFAULT_MODEL = "nvidia/nemotron-speech-streaming-en-0.6b"
 
 def supported_models():
     return (
