@@ -21,7 +21,7 @@ class VoiceInputWindow(CaptionedWindow):
         )
         self.setWindowTitle("语音输入")
         self.setObjectName("voiceInputWindow")
-        self.resize(460, 244)
+        self.resize(560, 400)
         self.setMinimumSize(280, 164)
         self.setStyleSheet(Path(__file__).with_name("style.qss").read_text(encoding="utf-8"))
         self.tray_requested.connect(self.hide_to_tray)
