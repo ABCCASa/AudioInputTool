@@ -1,8 +1,14 @@
+
 from typing import Callable
+
 from transformers import TextStreamer
 from abc import ABC, abstractmethod
 
 class AsrStreamer(TextStreamer, ABC):
+    @abstractmethod
+    def release(self):...
+
+
     @abstractmethod
     def model_sleep(self):...
 

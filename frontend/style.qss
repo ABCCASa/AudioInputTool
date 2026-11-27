@@ -13,6 +13,17 @@ QLabel#timer {
     font-size: 15px;
 }
 
+QComboBox, QComboBox QAbstractItemView {
+    background: #2c2d30;
+    color: #ffffff;
+    border: 1px solid #454649;
+    padding: 3px;
+}
+
+QComboBox:disabled {
+    color: #97999d;
+}
+
 QPlainTextEdit {
     background: #2c2d30;
     border: 1px solid #454649;

@@ -1,4 +1,5 @@
 from pathlib import Path
+from backend.model_loader import supported_models
 
 from PyQt6.QtCore import QElapsedTimer, QEvent, Qt, QTimer
 from .recording_button import RecordingButton
@@ -7,7 +8,7 @@ from .utils import button, icon
 from .recording import RecordingController
 from .transcript_editor import TranscriptEditor
 from PyQt6.QtWidgets import (
-    QApplication, QHBoxLayout, QLabel, QMenu,
+    QApplication, QComboBox, QHBoxLayout, QLabel, QMenu,
     QSystemTrayIcon,
 )
 
@@ -26,13 +27,18 @@ class VoiceInputWindow(CaptionedWindow):
         self.tray_requested.connect(self.hide_to_tray)
         self.close_requested.connect(self.quit_app)
 
+        self.model_selector = QComboBox()
+        self.model_selector.setAccessibleName("识别模型")
+        self.model_selector.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.model_selector.addItems(supported_models())
+        self.window_layout.addWidget(self.model_selector)
+
         self.editor = TranscriptEditor()
         self.window_layout.addWidget(self.editor, 1)
 
         footer = QHBoxLayout()
         footer.setSpacing(6)
         self.mic = RecordingButton()
-        self.mic.show_processing()
         self.mic.clicked.connect(self.toggle_recording)
         footer.addWidget(self.mic)
         self.timer_label = QLabel()
@@ -48,7 +54,8 @@ class VoiceInputWindow(CaptionedWindow):
         self.window_layout.addLayout(footer)
 
         self.recording = RecordingController(self)
-        self.recording.model_initialized.connect(self.on_model_initialized)
+        self.model_selector.currentTextChanged.connect(self.select_model)
+        self.recording.model_load_failed.connect(self.on_model_load_failed)
         self.recording.text_received.connect(self.append_transcript)
         self.recording.recording_started.connect(self.start_timer)
         self.recording.recording_finished.connect(self.recording_finished)
@@ -66,28 +73,29 @@ class VoiceInputWindow(CaptionedWindow):
         self.tray.activated.connect(self.tray_activated)
         if self.tray.isSystemTrayAvailable():
             self.tray.show()
-        self.recording.initialize_model()
 
-    def on_model_initialized(self, ready):
-        self.mic.show_idle()
-        if not ready:
-            self.mic.setEnabled(False)
-            self.mic.setToolTip("语音识别模型加载失败")
+    def select_model(self, model_id):
+        self.recording.select_model(model_id)
+        self.timer_label.clear()
+        self.mic.setToolTip("")
+
+    def on_model_load_failed(self):
+        self.timer_label.setText("加载失败")
+        self.mic.setToolTip("模型加载失败，点击重试或选择其他模型")
 
     def toggle_recording(self):
-        model = self.recording.model
-        if model is not None and model.is_active:
+        if self.session_open:
             self.stop_recording()
             return
-        if self.session_open:
-            return  # Previous session is still delivering its final UI events.
         self.session_open = True
+        self.model_selector.setEnabled(False)
         self.timer_label.clear()
+        self.mic.setToolTip("")
         self.mic.show_processing()
         self.recording.start()
 
     def start_timer(self):
-        if self.recording.model.is_active and not self.recording.stop_requested.is_set():
+        if not self.recording.stop_requested.is_set():
             self.mic.show_recording()
             self.elapsed.start()
             self.update_timer()
@@ -110,6 +118,7 @@ class VoiceInputWindow(CaptionedWindow):
     def recording_finished(self):
         self.clock.stop()
         self.session_open = False
+        self.model_selector.setEnabled(True)
         self.mic.show_idle()
 
     def shutdown_recording(self):

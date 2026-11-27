@@ -5,6 +5,7 @@ from threading import RLock, Thread
 from .audio_streamer import AudioStreamer
 from .asr_streamer import AsrStreamer
 from transformers import VoxtralRealtimeForConditionalGeneration, VoxtralRealtimeProcessor
+import gc
 
 class VoxtralAsrStreamer(AsrStreamer):
     def __init__(self,model_id: str = "mistralai/Voxtral-Mini-4B-Realtime-2602", device: str|torch.device|None = None, local_files_only=False):
@@ -28,7 +29,9 @@ class VoxtralAsrStreamer(AsrStreamer):
         if self._is_sleep:
             return
         self._model.to("cpu")
-        torch.cuda.empty_cache()
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         self._is_sleep = True
 
     def model_awake(self):
@@ -36,6 +39,15 @@ class VoxtralAsrStreamer(AsrStreamer):
             return
         self._model.to(self.device)
         self._is_sleep = False
+
+    def release(self):
+        if self._asr_thread is not None:
+            self._asr_thread.join()
+        del self._model, self._processor, self.tokenizer
+        self._callback = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     @property
     def is_active(self) -> bool:
