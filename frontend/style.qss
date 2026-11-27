@@ -86,6 +86,13 @@ QComboBox::drop-down {
     subcontrol-origin: border;
     subcontrol-position: top right;
     width: 34px;
+    background: transparent;
+    border: none;
+}
+
+QComboBox::down-arrow {
+    width: 0;
+    height: 0;
 }
 
 QPlainTextEdit {
