@@ -16,7 +16,7 @@ def _load_voxtral(model_id: str, local_files_only=False):
     return VoxtralAsrStreamer(model_id, device=device, local_files_only=local_files_only)
 
 def _load_nemotron(model_id: str, local_files_only=False):
-    return NemotronAsrStreamer(model_id, local_files_only=local_files_only)
+    return NemotronAsrStreamer(model_id, device=device, local_files_only=local_files_only)
 
 def load_model(model_id: str = DEFAULT_MODEL, local_files_only=False):
     if model_id in ["nvidia/nemotron-speech-streaming-en-0.6b", "nvidia/nemotron-3.5-asr-streaming-0.6b", ]:
